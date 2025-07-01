@@ -1,0 +1,43 @@
+{
+  "name": "discord-dx-dicebot",
+  "version": "1.0.0",
+  "description": "ダブルクロス専用Discordダイスボット",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rimraf dist",
+    "lint": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "trpg",
+    "doublecross",
+    "dice",
+    "bcdice"
+  ],
+  "author": "",
+  "license": "ISC",
+  "volta": {
+    "node": "18.20.8"
+  },
+  "dependencies": {
+    "bcdice": "^4.8.0",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^24.0.8",
+    "eslint": "^9.30.0",
+    "globals": "^16.2.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.1"
+  }
+}
