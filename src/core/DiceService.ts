@@ -109,58 +109,43 @@ export class DiceService {
         rands: [],
         criticalCount: 0,
         isValid: false,
-        errorMessage: diceCommand.errorMessage || 'エラーが発生しました'
+        errorMessage: diceCommand.errorMessage || 'コマンド形式が正しくありません'
       };
     }
 
+    // BCDice がまだロードされていなければ初期化
+    if (!this.gameSystem) {
+      await this.initialize();
+    }
+
     try {
-      // --- 無限上方ロールを自前で処理する ---
-      const criticalValue = diceCommand.criticalValue ?? 10;
-      const modifier = diceCommand.modifier;
+      const bcdiceCommand = this.buildBCDiceCommand(diceCommand);
+      const result = this.gameSystem.eval(bcdiceCommand);
 
-      let currentDice = diceCommand.diceCount;
-      let accumulatedCriticals = 0; // クリティカルが発生したラウンド数
-      const allRolls: number[] = [];
-      const rounds: number[][] = [];
-      let latestRolls: number[] = [];
-
-      const rollD10 = () => Math.floor(Math.random() * 10) + 1; // 1〜10 の整数
-
-      // 無限上方ロール
-      while (currentDice > 0) {
-        latestRolls = Array.from({ length: currentDice }, rollD10);
-        rounds.push([...latestRolls]); // 各ラウンドの出目を保存
-        allRolls.push(...latestRolls);
-
-        // このラウンドでクリティカルしたダイス数を数える
-        const thisRoundCriticals = latestRolls.filter(v => v >= criticalValue).length;
-
-        if (thisRoundCriticals === 0) {
-          // クリティカルが無ければ終了
-          break;
-        }
-
-        // クリティカルした回数分、+10 して次のラウンドはクリティカルしたダイス数だけ振り直し
-        accumulatedCriticals += 1;
-        currentDice = thisRoundCriticals;
+      if (!result) {
+        return {
+          command: diceCommand.originalCommand,
+          dice: '',
+          rounds: [],
+          modifier: diceCommand.modifier,
+          total: 0,
+          rands: [],
+          criticalCount: 0,
+          isValid: false,
+          errorMessage: 'BCDice がコマンドを認識しませんでした'
+        };
       }
 
-      const finalHighest = Math.max(...latestRolls);
-      const total = finalHighest + accumulatedCriticals * 10 + modifier;
-
-      // 表示用: [9,1,3]→[10,7] のようにラウンドごとに括弧を付けて連結
-      const diceStr = rounds
-        .map(r => `[${r.join(',')}]`)
-        .join('→');
+      const parsed = this.parseBCDiceDXResult(result.text);
 
       return {
         command: diceCommand.originalCommand,
-        dice: diceStr,
-        rounds,
-        modifier,
-        total,
-        rands: allRolls,
-        criticalCount: accumulatedCriticals,
+        dice: parsed.diceStr,
+        rounds: parsed.rounds,
+        modifier: diceCommand.modifier,
+        total: parsed.total,
+        rands: result.rands.map((v: [number, number]) => v[0]),
+        criticalCount: parsed.criticalCount,
         isValid: true
       };
 
@@ -178,5 +163,45 @@ export class DiceService {
         errorMessage: 'ダイス処理中にエラーが発生しました'
       };
     }
+  }
+
+  /**
+   * BCDice が出力する DoubleCross 用結果テキストを解析して各種情報を抽出
+   */
+  private static parseBCDiceDXResult(text: string): {
+    diceStr: string;
+    rounds: number[][];
+    total: number;
+    criticalCount: number;
+  } {
+    // 「＞」で区切る。例: (8DX10+5) ＞ 9[2,3,...]+5 ＞ 14
+    const parts = text.split('＞').map(p => p.trim());
+
+    if (parts.length < 3) {
+      throw new Error(`結果テキストの解析に失敗: ${text}`);
+    }
+
+    const dicePartRaw = parts[1];
+
+    // 総合値は 3 パート目の先頭の数値を利用
+    const totalMatch = parts[2].match(/\d+/);
+    const total = totalMatch ? parseInt(totalMatch[0], 10) : 0;
+
+    // 各ラウンドのダイス出目 [2,3,4] 部分を抽出
+    const bracketRegex = /\[([^\]]+)\]/g;
+    const rounds: number[][] = [];
+    let m: RegExpExecArray | null;
+    while ((m = bracketRegex.exec(dicePartRaw)) !== null) {
+      const nums = m[1]
+        .split(',')
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => !Number.isNaN(n));
+      rounds.push(nums);
+    }
+
+    const diceStr = rounds.map(r => `[${r.join(',')}]`).join('→');
+    const criticalCount = Math.max(0, rounds.length - 1);
+
+    return { diceStr, rounds, total, criticalCount };
   }
 } 

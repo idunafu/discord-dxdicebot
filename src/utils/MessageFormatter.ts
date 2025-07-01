@@ -10,7 +10,7 @@ export class MessageFormatter {
    */
   public static formatDiceResult(result: DXDiceResult, username: string): EmbedBuilder {
     const embed = new EmbedBuilder()
-      .setTitle('🎲 ダブルクロス判定結果')
+      .setTitle('🎲 判定結果')
       .setColor(result.isValid ? 0x00ff00 : 0xff0000)
       .setTimestamp()
       .setFooter({ text: `プレイヤー: ${username}` });
