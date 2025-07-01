@@ -99,10 +99,11 @@ pnpm clean
 1. [Discord Developer Portal](https://discord.com/developers/applications) にアクセス
 2. 「New Application」をクリックして新しいアプリケーションを作成
 3. 「Bot」タブでボットユーザーを作成
-4. 「Token」をコピーして環境変数に設定
-5. 「OAuth2」タブの「URL Generator」でボット招待URLを生成
+4. 「Privileged Gateway Intents」の「Message Content Intent」を有効化
+5. 「Token」をコピーして環境変数に設定
+6. 「OAuth2」タブの「URL Generator」でボット招待URLを生成
    - Scopes: `bot`, `applications.commands`
-   - Bot Permissions: `Send Messages`, `Use Slash Commands`, `Embed Links`
+   - Bot Permissions: `Send Messages`, `Use Slash Commands`, `Embed Links`, `Read Messages History`
 
 ## デプロイ
 
