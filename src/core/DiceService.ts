@@ -1,7 +1,14 @@
-import { DynamicLoader } from 'bcdice';
-import type { BCDiceResult, DXDiceResult } from '../types/DiceResult.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import bcdiceDefault from 'bcdice';
+import type { DXDiceResult } from '../types/DiceResult.js';
 import type { DiceCommand } from '../types/Command.js';
 import { Logger } from '../utils/Logger.js';
+
+// Node.js v22 以降では CommonJS モジュールからの名前付きインポートに互換性の問題が発生することがあるため、
+// bcdice はデフォルトインポートしてプロパティ経由で取得する。
+// 型定義が付与されていないため、必要最低限の型エイリアスを定義しておく
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DynamicLoader = any;
 
 /**
  * ダイス処理サービス
@@ -15,7 +22,12 @@ export class DiceService {
    */
   public static async initialize(): Promise<void> {
     try {
-      this.loader = new DynamicLoader();
+      // bcdiceDefault.DynamicLoader が存在しない場合に備えてフェイルセーフ
+      const DL: any = (bcdiceDefault as any).DynamicLoader;
+      if (!DL) {
+        throw new Error('BCDice パッケージに DynamicLoader が見つかりません');
+      }
+      this.loader = new DL();
       this.gameSystem = await this.loader.dynamicLoad('DoubleCross');
       Logger.info('DiceService initialized with DoubleCross system');
     } catch (error) {
@@ -87,14 +99,11 @@ export class DiceService {
    * ダイス判定を実行
    */
   public static async rollDice(diceCommand: DiceCommand): Promise<DXDiceResult> {
-    if (!this.gameSystem) {
-      throw new Error('DiceService is not initialized');
-    }
-
     if (!diceCommand.isValid) {
       return {
         command: diceCommand.originalCommand,
         dice: '',
+        rounds: [],
         modifier: 0,
         total: 0,
         rands: [],
@@ -105,41 +114,53 @@ export class DiceService {
     }
 
     try {
-      const bcdiceCommand = this.buildBCDiceCommand(diceCommand);
-      Logger.debug(`Executing BCDice command: ${bcdiceCommand}`);
-      
-      const result: BCDiceResult | null = this.gameSystem.eval(bcdiceCommand);
-      
-      if (!result) {
-        return {
-          command: diceCommand.originalCommand,
-          dice: bcdiceCommand,
-          modifier: diceCommand.modifier,
-          total: 0,
-          rands: [],
-          criticalCount: 0,
-          isValid: false,
-          errorMessage: 'ダイス判定に失敗しました'
-        };
+      // --- 無限上方ロールを自前で処理する ---
+      const criticalValue = diceCommand.criticalValue ?? 10;
+      const modifier = diceCommand.modifier;
+
+      let currentDice = diceCommand.diceCount;
+      let accumulatedCriticals = 0; // クリティカルが発生したラウンド数
+      const allRolls: number[] = [];
+      const rounds: number[][] = [];
+      let latestRolls: number[] = [];
+
+      const rollD10 = () => Math.floor(Math.random() * 10) + 1; // 1〜10 の整数
+
+      // 無限上方ロール
+      while (currentDice > 0) {
+        latestRolls = Array.from({ length: currentDice }, rollD10);
+        rounds.push([...latestRolls]); // 各ラウンドの出目を保存
+        allRolls.push(...latestRolls);
+
+        // このラウンドでクリティカルしたダイス数を数える
+        const thisRoundCriticals = latestRolls.filter(v => v >= criticalValue).length;
+
+        if (thisRoundCriticals === 0) {
+          // クリティカルが無ければ終了
+          break;
+        }
+
+        // クリティカルした回数分、+10 して次のラウンドはクリティカルしたダイス数だけ振り直し
+        accumulatedCriticals += 1;
+        currentDice = thisRoundCriticals;
       }
 
-      // BCDice結果を解析
-      const rands = result.rands.map(([value]) => value);
-      const diceTotal = rands.reduce((sum, value) => sum + value, 0);
-      const finalTotal = diceTotal + diceCommand.modifier;
+      const finalHighest = Math.max(...latestRolls);
+      const total = finalHighest + accumulatedCriticals * 10 + modifier;
 
-      // クリティカル回数をカウント（クリティカル値以上のダイス）
-      const criticalCount = rands.filter(value => 
-        value >= (diceCommand.criticalValue || 10)
-      ).length;
+      // 表示用: [9,1,3]→[10,7] のようにラウンドごとに括弧を付けて連結
+      const diceStr = rounds
+        .map(r => `[${r.join(',')}]`)
+        .join('→');
 
       return {
         command: diceCommand.originalCommand,
-        dice: `[${rands.join(',')}]`,
-        modifier: diceCommand.modifier,
-        total: finalTotal,
-        rands,
-        criticalCount,
+        dice: diceStr,
+        rounds,
+        modifier,
+        total,
+        rands: allRolls,
+        criticalCount: accumulatedCriticals,
         isValid: true
       };
 
@@ -148,6 +169,7 @@ export class DiceService {
       return {
         command: diceCommand.originalCommand,
         dice: '',
+        rounds: [],
         modifier: 0,
         total: 0,
         rands: [],

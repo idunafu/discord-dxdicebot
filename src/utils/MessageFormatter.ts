@@ -29,11 +29,12 @@ export class MessageFormatter {
     } else {
       description += ` = ${result.total}`;
     }
-    
+
     description += `\n**【最終値】** ${result.total}`;
 
     if (result.criticalCount > 0) {
-      description += `\n**【クリティカル】** ${result.criticalCount}回`;
+      const criticalBonus = result.criticalCount * 10;
+      description += `\n**【クリティカル】** ${result.criticalCount}回 (+${criticalBonus})`;
     }
 
     embed.setDescription(description);

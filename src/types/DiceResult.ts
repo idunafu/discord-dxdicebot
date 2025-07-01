@@ -27,6 +27,7 @@ export interface DetailedRand {
 export interface DXDiceResult {
   command: string;
   dice: string;
+  rounds: number[][];
   modifier: number;
   total: number;
   rands: number[];
