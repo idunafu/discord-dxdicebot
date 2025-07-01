@@ -1,4 +1,4 @@
-# DX Dice Bot
+# DX3rd Dice Bot
 
 ダブルクロス2nd,3rd専用のDiscordダイスボット
 
