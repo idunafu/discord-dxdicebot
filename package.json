@@ -22,7 +22,7 @@
     "bcdice"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "volta": {
     "node": "18.20.8"
   },

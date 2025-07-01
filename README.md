@@ -144,6 +144,14 @@ MIT
 - **pnpm** - パッケージマネージャー
 - **volta** - Node.jsバージョン管理
 
+## 依存関係のライセンス
+
+このプロジェクトは以下のオープンソースライブラリを使用しています：
+
+- **bcdice** (v4.8.0) - BSD 3-Clause License
+  - Copyright (c) 2019, ukatama
+  - [ライセンス全文](https://github.com/bcdice/bcdice-js/blob/master/LICENSE)
+
 ## 貢献
 
 バグレポートや機能提案は、GitHubのIssuesでお願いします。
